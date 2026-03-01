@@ -42,6 +42,7 @@ export const pendingVerifications: HospitalVerification[] = loadPending();
 
 const REGISTERED_KEY = 'jh_registered_hospitals_v1';
 const SUBMISSIONS_KEY = 'jh_hospital_submissions_v1';
+const PASSWORDS_KEY = 'jh_hospital_passwords_v1';
 
 type RegisteredHospital = {
   regId: string;
@@ -76,8 +77,24 @@ function saveSubmissions(s: any[]) {
   try { localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(s)); } catch (e) {}
 }
 
+function loadPasswords(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(PASSWORDS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return {
+    "HOSP-2024-0042": "admin123",
+    "HOSP-2024-0156": "admin123",
+  };
+}
+
+function savePasswords(m: Record<string, string>) {
+  try { localStorage.setItem(PASSWORDS_KEY, JSON.stringify(m)); } catch (e) {}
+}
+
 export const registeredHospitals: Record<string, RegisteredHospital> = loadRegistered();
 export const hospitalSubmissions: any[] = loadSubmissions();
+export const hospitalPasswords: Record<string, string> = loadPasswords();
 
 export function validateHospitalRegNumber(reg: string) {
   // Expected format HOSP-YYYY-NNNN
@@ -94,22 +111,64 @@ export function validateHospitalEmail(email: string) {
 }
 
 export function registerHospital(h: RegisteredHospital) {
-  if (registeredHospitals[h.regId] || approvedHospitals[h.regId]) return false;
-  registeredHospitals[h.regId] = h;
-  saveRegistered(registeredHospitals);
+  // Check if already registered or approved
+  const exists = registeredHospitals[h.regId] || approvedHospitals[h.regId] || pendingVerifications.find(p => p.regId === h.regId);
+  if (exists) return false;
+  
+  // Store the password separately
+  hospitalPasswords[h.regId] = h.password || '';
+  savePasswords(hospitalPasswords);
+  
+  // Create a pending verification request
+  const pendingReq: HospitalVerification = {
+    regId: h.regId,
+    name: h.name,
+    certificateName: h.certificates,
+    proofs: h.address,
+    submittedAt: Date.now(),
+  };
+  
+  pendingVerifications.push(pendingReq);
+  savePending(pendingVerifications);
+  
+  try { window.dispatchEvent(new CustomEvent('jh:pending-updated')); } catch (e) {}
+  
   return true;
 }
 
 export function authenticateHospital(regId: string, password: string) {
-  const r = registeredHospitals[regId];
-  if (!r) return false;
-  return r.password === password;
+  // Only allow login if hospital is approved
+  if (!approvedHospitals[regId]) return false;
+  
+  const storedPassword = hospitalPasswords[regId];
+  if (!storedPassword) return false;
+  return storedPassword === password;
 }
 
 export function submitPatientCase(regId: string, data: any) {
   const entry = { regId, ...data, submittedAt: Date.now(), status: 'pending' };
   hospitalSubmissions.push(entry);
   saveSubmissions(hospitalSubmissions);
+  try { window.dispatchEvent(new CustomEvent('jh:cases-updated')); } catch (e) {}
+  return true;
+}
+
+export function approvePatientCase(caseIndex: number) {
+  if (caseIndex < 0 || caseIndex >= hospitalSubmissions.length) return false;
+  hospitalSubmissions[caseIndex].status = 'approved';
+  hospitalSubmissions[caseIndex].approvedAt = Date.now();
+  saveSubmissions(hospitalSubmissions);
+  try { window.dispatchEvent(new CustomEvent('jh:cases-updated')); } catch (e) {}
+  return true;
+}
+
+export function rejectPatientCase(caseIndex: number, reason?: string) {
+  if (caseIndex < 0 || caseIndex >= hospitalSubmissions.length) return false;
+  hospitalSubmissions[caseIndex].status = 'rejected';
+  hospitalSubmissions[caseIndex].rejectionReason = reason || 'Rejected by admin';
+  hospitalSubmissions[caseIndex].rejectedAt = Date.now();
+  saveSubmissions(hospitalSubmissions);
+  try { window.dispatchEvent(new CustomEvent('jh:cases-updated')); } catch (e) {}
   return true;
 }
 

@@ -7,15 +7,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   validateUniversityId,
   validateUniversityEmail,
-  // local helpers left for fallback/offline mode
   registerUniversity,
   authenticateUniversity,
-  registeredUniversities,
-  apiRegisterUniversity,
-  apiLoginUniversity,
 } from "@/lib/universities";
 
-type UniversityRegisterFormProps = { onRegistered: (uniId: string, password: string) => void };
+type UniversityRegisterFormProps = { onRegistered: () => void };
 
 const UniversityRegisterForm = ({ onRegistered }: UniversityRegisterFormProps) => {
   const [name, setName] = useState('');
@@ -25,28 +21,37 @@ const UniversityRegisterForm = ({ onRegistered }: UniversityRegisterFormProps) =
   const [uniId, setUniId] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
-  const tryRegister = async () => {
+  const tryRegister = () => {
     if (!name || !email || !uniId || !password) { alert('Please fill required fields'); return; }
-    if (!validateUniversityEmail(email, name)) { alert('University email must contain the university name and end with .ac.in, .edu.in or .res.in'); return; }
-    if (!validateUniversityId(uniId)) { alert('University ID must follow UNI-YYYY-NNNN format'); return; }
     if (password.length < 6) { alert('Password must be at least 6 characters'); return; }
     if (password !== confirm) { alert('Passwords do not match'); return; }
-    // attempt backend registration first
-    let ok = false;
-    try {
-      ok = await apiRegisterUniversity({ uniId, name, email, address, certificates, password });
-    } catch (e) {
-      console.error('registration API error', e);
-      ok = false;
-    }
+    const ok = registerUniversity({ uniId, name, email, address, certificates, password });
     if (ok) {
-      alert('Registration successful — you are logged in');
-      onRegistered(uniId, password);
+      setSubmitted(true);
+      onRegistered();
     } else {
-      alert('Registration failed: maybe already registered or server error');
+      alert('Registration failed: university already registered or pending');
     }
   };
+
+  if (submitted) {
+    return (
+      <div className="p-4 bg-accent/10 rounded-md text-center space-y-3">
+        <div className="text-lg font-semibold text-foreground">✓ Registration Submitted</div>
+        <p className="text-sm text-muted-foreground">
+          Your university registration request has been submitted to the admin for verification.
+        </p>
+        <p className="text-sm text-accent font-medium">
+          Once approved, you'll be able to login with your university ID and password.
+        </p>
+        <Button variant="outline" onClick={() => { setSubmitted(false); setName(''); setEmail(''); setAddress(''); setCertificates(''); setUniId(''); setPassword(''); setConfirm(''); }}>
+          Back to Login
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -83,13 +88,18 @@ const UniversityRegisterForm = ({ onRegistered }: UniversityRegisterFormProps) =
         <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="mt-1" />
       </div>
       <Button className="w-full bg-accent text-accent-foreground" onClick={tryRegister}>Create Account</Button>
+      <p className="text-xs text-muted-foreground text-center">Registration requires admin approval</p>
     </div>
   );
 };
 
 const UniversityPortal = () => {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [uniId, setUniId] = useState('');
+  const [loggedIn, setLoggedIn] = useState(() => {
+    try { return localStorage.getItem('jh_uni_logged_in') === 'true'; } catch (e) { return false; }
+  });
+  const [uniId, setUniId] = useState(() => {
+    try { return localStorage.getItem('jh_uni_id') || ''; } catch (e) { return ''; }
+  });
   const [uniPass, setUniPass] = useState('');
   // view controls which sidebar page is shown after login
   const [view, setView] = useState<
@@ -97,6 +107,15 @@ const UniversityPortal = () => {
   >('dashboard');
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Persist loggedIn state
+  useEffect(() => {
+    if (loggedIn) {
+      try { localStorage.setItem('jh_uni_logged_in', 'true'); localStorage.setItem('jh_uni_id', uniId); } catch (e) {}
+    } else {
+      try { localStorage.removeItem('jh_uni_logged_in'); localStorage.removeItem('jh_uni_id'); } catch (e) {}
+    }
+  }, [loggedIn, uniId]);
 
   // sync view with URL so sidebar links work and can be bookmarked
   useEffect(() => {
@@ -289,124 +308,118 @@ const UniversityPortal = () => {
     }
   };
 
-  if (!loggedIn) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
 
-  return (
-    <div className="py-10">
-      <div className="container max-w-3xl">
-        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+  // Show login screen if not logged in and viewing root /university path
+  if (!loggedIn && location.pathname === '/university') {
+    return (
+      <div className="py-10">
+        <div className="container max-w-3xl">
+          <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
 
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">
-                University Login / Register
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Sign in with your University ID or create a new account
-              </p>
-            </div>
-          </div>
-
-          {/* Toggle Buttons */}
-          <div className="flex space-x-2 mb-6">
-            <button
-              className={`px-4 py-2 rounded ${
-                mode === 'login'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/10'
-              }`}
-              onClick={() => setMode('login')}
-            >
-              Login
-            </button>
-            <button
-              className={`px-4 py-2 rounded ${
-                mode === 'register'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/10'
-              }`}
-              onClick={() => setMode('register')}
-            >
-              Register
-            </button>
-          </div>
-
-          {mode === 'login' ? (
-            <div className="p-4 bg-muted/10 rounded-md">
-              <h2 className="font-semibold mb-3">University Login</h2>
-              <div className="space-y-3">
-                <div>
-                  <Label>University ID</Label>
-                  <Input
-                    value={uniId}
-                    onChange={(e) => setUniId(e.target.value)}
-                    placeholder="UNI-2024-0001"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label>Password</Label>
-                  <Input
-                    type="password"
-                    value={uniPass}
-                    onChange={(e) => setUniPass(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-                <Button
-                  className="w-full bg-primary text-primary-foreground"
-                  onClick={async () => {
-                    if (!uniId || !uniPass) {
-                      alert('Please enter university ID and password');
-                      return;
-                    }
-                    const ok = await apiLoginUniversity(uniId, uniPass);
-                    if (ok) {
-                      setLoggedIn(true);
-                      navigate('/university/dashboard');
-                    } else {
-                      alert('Invalid credentials or server error');
-                    }
-                  }}
-                >
-                  <LogIn className="w-4 h-4 mr-2" /> Sign In
-                </Button>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <GraduationCap className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">
+                  University Login / Register
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Sign in with your University ID or create a new account
+                </p>
               </div>
             </div>
-          ) : (
-            <div className="p-4 bg-muted/10 rounded-md">
-              <h2 className="font-semibold mb-3">University Registration</h2>
-              <UniversityRegisterForm
-                onRegistered={async (newUniId, pwd) => {
-                  setUniId(newUniId);
-                  setUniPass(pwd);
-                  // try to login via API to obtain token
-                  const ok = await apiLoginUniversity(newUniId, pwd);
-                  if (ok) {
-                    setLoggedIn(true);
-                    navigate('/university/dashboard');
-                  } else {
-                    // fallback: still navigate but warn user
-                    alert('Registered but automatic login failed, please manually sign in');
-                    navigate('/university/dashboard');
-                  }
-                }}
-              />
+
+            {/* Toggle Buttons */}
+            <div className="flex space-x-2 mb-6">
+              <button
+                className={`px-4 py-2 rounded ${
+                  mode === 'login'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted/10'
+                }`}
+                onClick={() => setMode('login')}
+              >
+                Login
+              </button>
+              <button
+                className={`px-4 py-2 rounded ${
+                  mode === 'register'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted/10'
+                }`}
+                onClick={() => setMode('register')}
+              >
+                Register
+              </button>
             </div>
-          )}
+
+            {mode === 'login' ? (
+              <div className="p-4 bg-muted/10 rounded-md">
+                <h2 className="font-semibold mb-3">University Login</h2>
+                <div className="space-y-3">
+                  <div>
+                    <Label>University ID</Label>
+                    <Input
+                      value={uniId}
+                      onChange={(e) => setUniId(e.target.value)}
+                      placeholder="UNI-2024-0001"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Password</Label>
+                    <Input
+                      type="password"
+                      id="university-pass"
+                      value={uniPass}
+                      onChange={(e) => setUniPass(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <Button
+                    className="w-full bg-primary text-primary-foreground"
+                    onClick={() => {
+                      if (!uniId || !uniPass) {
+                        alert('Please enter university ID and password');
+                        return;
+                      }
+                      if (authenticateUniversity(uniId, uniPass)) {
+                        setLoggedIn(true);
+                        navigate('/university/dashboard');
+                      } else {
+                        alert('ℹ️ Invalid credentials OR your registration is pending admin approval.\n\nIf you just registered, please wait for admin verification before logging in.');
+                      }
+                    }}
+                  >
+                    <LogIn className="w-4 h-4 mr-2" /> Sign In
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-4 text-center">
+                  Demo: Try UNI-2024-0001 / admin123 (pre-approved)
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 bg-muted/10 rounded-md">
+                <h2 className="font-semibold mb-3">University Registration</h2>
+                <UniversityRegisterForm
+                  onRegistered={() => setMode('login')}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
-  return (
-    <div className="flex min-h-screen">
-      {/* sidebar */}
-      <nav className="w-64 bg-slate-50 border-r border-border p-6">
+    );
+  }
+
+  // Show dashboard if logged in
+  if (loggedIn) {
+    return (
+      <div className="flex min-h-screen">
+        {/* sidebar */}
+        <nav className="w-64 bg-slate-50 border-r border-border p-6">
         <h2 className="text-lg font-bold mb-6">College Management</h2>
         <ul className="space-y-3 text-sm">
           <li>
@@ -460,6 +473,11 @@ const UniversityPortal = () => {
         {renderContent()}
       </main>
     </div>
-  );
+    );
+  }
+
+  // Fallback: redirect to login if no match
+  navigate('/university');
+  return null;
 };
 export default UniversityPortal;

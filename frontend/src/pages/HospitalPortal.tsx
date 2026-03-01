@@ -15,7 +15,7 @@ import {
   hospitalSubmissions,
 } from "@/lib/hospitals";
 
-type RegisterFormProps = { onRegistered: (regId: string, password: string) => void };
+type RegisterFormProps = { onRegistered: () => void };
 
 const RegisterForm = ({ onRegistered }: RegisterFormProps) => {
   const [name, setName] = useState('');
@@ -25,6 +25,7 @@ const RegisterForm = ({ onRegistered }: RegisterFormProps) => {
   const [regNumber, setRegNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   const tryRegister = () => {
     if (!name || !email || !regNumber || !password) { alert('Please fill required fields'); return; }
@@ -34,12 +35,29 @@ const RegisterForm = ({ onRegistered }: RegisterFormProps) => {
     if (password !== confirm) { alert('Passwords do not match'); return; }
     const ok = registerHospital({ regId: regNumber, name, email, address, certificates, password });
     if (ok) {
-      alert('Registration successful — you are logged in');
-      onRegistered(regNumber, password);
+      setSubmitted(true);
+      onRegistered();
     } else {
-      alert('Registration failed: hospital already registered or approved');
+      alert('Registration failed: hospital already registered or pending');
     }
   };
+
+  if (submitted) {
+    return (
+      <div className="p-4 bg-accent/10 rounded-md text-center space-y-3">
+        <div className="text-lg font-semibold text-foreground">✓ Registration Submitted</div>
+        <p className="text-sm text-muted-foreground">
+          Your hospital registration request has been submitted to the admin for verification.
+        </p>
+        <p className="text-sm text-accent font-medium">
+          Once approved, you'll be able to login with your registration ID and password.
+        </p>
+        <Button variant="outline" onClick={() => { setSubmitted(false); setName(''); setEmail(''); setAddress(''); setCertificates(''); setRegNumber(''); setPassword(''); setConfirm(''); }}>
+          Back to Login
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -76,6 +94,7 @@ const RegisterForm = ({ onRegistered }: RegisterFormProps) => {
         <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="mt-1" />
       </div>
       <Button className="w-full bg-accent text-accent-foreground" onClick={tryRegister}>Create Account</Button>
+      <p className="text-xs text-muted-foreground text-center">Registration requires admin approval</p>
     </div>
   );
 };
@@ -104,6 +123,7 @@ const HospitalPortal = () => {
   const [insuranceCoverage, setInsuranceCoverage] = useState('');
   const [prescriptionFile, setPrescriptionFile] = useState('');
   const [medicalReportFile, setMedicalReportFile] = useState('');
+  const [casesRefresh, setCasesRefresh] = useState(0);
 
   useEffect(() => {
     const parts = location.pathname.split('/').filter(Boolean);
@@ -114,6 +134,17 @@ const HospitalPortal = () => {
       setView('dashboard');
     }
   }, [location.pathname]);
+
+  // Listen for case updates from admin
+  useEffect(() => {
+    const onCasesUpdated = () => {
+      setCasesRefresh(prev => prev + 1);
+    };
+    window.addEventListener('jh:cases-updated', onCasesUpdated);
+    return () => {
+      window.removeEventListener('jh:cases-updated', onCasesUpdated);
+    };
+  }, []);
 
   if (!loggedIn) {
     return (
@@ -166,17 +197,20 @@ const HospitalPortal = () => {
                     setLoggedIn(true);
                     navigate('/hospital/dashboard');
                   } else {
-                    alert('Invalid credentials or not registered');
+                    alert('ℹ️ Invalid credentials OR your registration is pending admin approval.\n\nIf you just registered, please wait for admin verification before logging in.');
                   }
                 }}>
                   <LogIn className="w-4 h-4 mr-2" /> Sign In
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-4 text-center">
+                Demo: Try HOSP-2024-0042 / admin123 (pre-approved)
+              </p>
             </div>
           ) : (
             <div className="p-4 bg-muted/10 rounded-md">
               <h2 className="font-semibold mb-3">Hospital Registration</h2>
-              <RegisterForm onRegistered={(rId, pwd) => { setRegId(rId); setLoggedIn(true); navigate('/hospital/dashboard'); }} />
+              <RegisterForm onRegistered={() => setMode('login')} />
             </div>
           )}
           </div>
@@ -370,7 +404,15 @@ const HospitalPortal = () => {
                     <td className="px-5 py-3">{s.patientName}</td>
                     <td className="px-5 py-3">{s.diseaseName}</td>
                     <td className="px-5 py-3 font-semibold">₹{s.amountRequired?.toLocaleString?.() || s.estimatedCost}</td>
-                    <td className="px-5 py-3">{s.status}</td>
+                    <td className="px-5 py-3">
+                      <span className={`text-xs font-semibold px-2.5 py-1.5 rounded-full ${
+                        s.status === 'approved' ? 'bg-success/15 text-success' :
+                        s.status === 'rejected' ? 'bg-destructive/15 text-destructive' :
+                        'bg-amber-100/30 text-amber-700'
+                      }`}>
+                        {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

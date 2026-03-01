@@ -1,10 +1,11 @@
-import { Shield, AlertTriangle, CheckCircle, XCircle, Brain, BarChart3, LogIn } from "lucide-react";
+import { Shield, AlertTriangle, CheckCircle, XCircle, Brain, BarChart3, LogIn, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
-import { getPendingVerifications, approveVerification, rejectVerification } from "@/lib/hospitals";
+import { getPendingVerifications, approveVerification, rejectVerification, hospitalSubmissions, approvePatientCase, rejectPatientCase } from "@/lib/hospitals";
+import { getPendingUniversityVerifications, approveUniversityVerification, rejectUniversityVerification } from "@/lib/universities";
 
 const riskColor = (r: string) => {
   if (r === "High") return "text-destructive bg-destructive/10";
@@ -12,16 +13,11 @@ const riskColor = (r: string) => {
   return "text-success bg-success/10";
 };
 
-const pendingCases = [
-  { id: "JD-2848", disease: "Cardiac Bypass", hospital: "Fortis Mumbai", cost: 1400000, aiScore: 92, riskFlag: "Low", duplicate: false, confidence: 94 },
-  { id: "JD-2849", disease: "Liver Transplant", hospital: "Medanta Gurugram", cost: 2800000, aiScore: 67, riskFlag: "High", duplicate: false, confidence: 71 },
-  { id: "JD-2850", disease: "Chemotherapy", hospital: "Tata Memorial", cost: 950000, aiScore: 88, riskFlag: "Medium", duplicate: true, confidence: 85 },
-  { id: "JD-2851", disease: "Dialysis (6 mo)", hospital: "CMC Vellore", cost: 320000, aiScore: 95, riskFlag: "Low", duplicate: false, confidence: 97 },
-];
-
 const AdminDashboard = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const [pending, setPending] = useState(getPendingVerifications());
+  const [pendingUniversities, setPendingUniversities] = useState(getPendingUniversityVerifications());
+  const [cases, setCases] = useState(() => hospitalSubmissions.filter((s: any) => s.status === 'pending'));
 
   // refresh pending verifications when localStorage changes (other tab) or window gains focus
   useEffect(() => {
@@ -29,16 +25,32 @@ const AdminDashboard = () => {
       if (e.key === null || e.key === 'jh_pending_verifications_v1') {
         setPending(getPendingVerifications().slice());
       }
+      if (e.key === null || e.key === 'jh_pending_university_verifications_v1') {
+        setPendingUniversities(getPendingUniversityVerifications().slice());
+      }
+      if (e.key === null || e.key === 'jh_hospital_submissions_v1') {
+        setCases(hospitalSubmissions.filter((s: any) => s.status === 'pending').slice());
+      }
     };
-    const onFocus = () => setPending(getPendingVerifications().slice());
-    const onCustom = () => setPending(getPendingVerifications().slice());
+    const onFocus = () => {
+      setPending(getPendingVerifications().slice());
+      setPendingUniversities(getPendingUniversityVerifications().slice());
+      setCases(hospitalSubmissions.filter((s: any) => s.status === 'pending').slice());
+    };
+    const onCustom = () => {
+      setPending(getPendingVerifications().slice());
+      setPendingUniversities(getPendingUniversityVerifications().slice());
+      setCases(hospitalSubmissions.filter((s: any) => s.status === 'pending').slice());
+    };
     window.addEventListener('storage', onStorage);
     window.addEventListener('focus', onFocus);
     window.addEventListener('jh:pending-updated', onCustom as EventListener);
+    window.addEventListener('jh:cases-updated', onCustom as EventListener);
     return () => {
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('jh:pending-updated', onCustom as EventListener);
+      window.removeEventListener('jh:cases-updated', onCustom as EventListener);
     };
   }, []);
 
@@ -92,8 +104,8 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: "Pending Hospital Verifs", value: String(pending.length), color: "text-accent" },
-            { label: "Pending Cases", value: "4", color: "text-accent" },
-            { label: "Approved Today", value: "12", color: "text-success" },
+            { label: "Pending University Verifs", value: String(pendingUniversities.length), color: "text-accent" },
+            { label: "Pending Cases", value: String(cases.length), color: "text-accent" },
             { label: "Avg Confidence", value: "86.7%", color: "text-foreground" },
           ].map((s, i) => (
             <div key={i} className="bg-card rounded-xl border border-border p-5">
@@ -125,41 +137,44 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {pendingCases.map(c => (
-                  <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="px-5 py-4 font-mono text-foreground">{c.id}</td>
-                    <td className="px-5 py-4 text-foreground font-medium">{c.disease}</td>
-                    <td className="px-5 py-4 text-muted-foreground">{c.hospital}</td>
-                    <td className="px-5 py-4 font-semibold text-foreground">₹{(c.cost / 100000).toFixed(1)}L</td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <Progress value={c.aiScore} className="h-1.5 w-16" />
-                        <span className="text-xs font-medium text-foreground">{c.aiScore}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${riskColor(c.riskFlag)}`}>{c.riskFlag}</span>
-                    </td>
-                    <td className="px-5 py-4">
-                      {c.duplicate ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-destructive"><AlertTriangle className="w-3 h-3" /> Yes</span>
-                      ) : (
+                {cases.length > 0 ? cases.map((c: any, idx: number) => {
+                  const caseIndexInSubmissions = hospitalSubmissions.indexOf(c);
+                  return (
+                    <tr key={idx} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-5 py-4 font-mono text-foreground">JD-{3000 + idx}</td>
+                      <td className="px-5 py-4 text-foreground font-medium">{c.diseaseName}</td>
+                      <td className="px-5 py-4 text-muted-foreground">{c.regId}</td>
+                      <td className="px-5 py-4 font-semibold text-foreground">₹{(c.estimatedCost / 100000).toFixed(1)}L</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <Progress value={85} className="h-1.5 w-16" />
+                          <span className="text-xs font-medium text-foreground">85</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${riskColor('Medium')}`}>Medium</span>
+                      </td>
+                      <td className="px-5 py-4">
                         <span className="text-xs text-success">No</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 font-semibold text-foreground">{c.confidence}%</td>
-                    <td className="px-5 py-4">
-                      <div className="flex gap-1.5">
-                        <Button size="sm" variant="ghost" className="text-success hover:bg-success/10 h-7 px-2">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 h-7 px-2">
-                          <XCircle className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </td>
+                      </td>
+                      <td className="px-5 py-4 font-semibold text-foreground">88%</td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-1.5">
+                          <Button size="sm" variant="ghost" className="text-success hover:bg-success/10 h-7 px-2" onClick={() => { approvePatientCase(caseIndexInSubmissions); setCases(hospitalSubmissions.filter((s: any) => s.status === 'pending').slice()); }}>
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 h-7 px-2" onClick={() => { rejectPatientCase(caseIndexInSubmissions); setCases(hospitalSubmissions.filter((s: any) => s.status === 'pending').slice()); }}>
+                            <XCircle className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }) : (
+                  <tr>
+                    <td colSpan={9} className="px-5 py-8 text-center text-muted-foreground">No pending cases</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -196,6 +211,47 @@ const AdminDashboard = () => {
                           <CheckCircle className="w-3.5 h-3.5" /> Approve
                         </Button>
                         <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 h-7 px-2" onClick={() => { rejectVerification(v.regId); setPending(getPendingVerifications().slice()); }}>
+                          <XCircle className="w-3.5 h-3.5" /> Reject
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* University Verifications */}
+        <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+          <div className="px-6 py-4 border-b border-border flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">University Verifications Pending</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Uni ID</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Organization</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Submitted</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Certificate</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingUniversities.map((v: any) => (
+                  <tr key={v.uniId} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="px-5 py-4 font-mono text-foreground">{v.uniId}</td>
+                    <td className="px-5 py-4 text-foreground font-medium">{v.name || '-'}</td>
+                    <td className="px-5 py-4 text-muted-foreground">{new Date(v.submittedAt).toLocaleString()}</td>
+                    <td className="px-5 py-4 font-semibold text-foreground">{v.certificateName || '—'}</td>
+                    <td className="px-5 py-4">
+                      <div className="flex gap-1.5">
+                        <Button size="sm" variant="ghost" className="text-success hover:bg-success/10 h-7 px-2" onClick={() => { approveUniversityVerification(v.uniId); setPendingUniversities(getPendingUniversityVerifications().slice()); }}>
+                          <CheckCircle className="w-3.5 h-3.5" /> Approve
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 h-7 px-2" onClick={() => { rejectUniversityVerification(v.uniId); setPendingUniversities(getPendingUniversityVerifications().slice()); }}>
                           <XCircle className="w-3.5 h-3.5" /> Reject
                         </Button>
                       </div>
