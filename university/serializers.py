@@ -1,13 +1,13 @@
 from rest_framework import serializers
-from .models import HospitalInfo
+from .models import university
 
-class HospitalInfoSerializer(serializers.ModelSerializer):
+class UniversityCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = HospitalInfo
+        model = university
         fields = [
-            'hospital_name',
-            'hospital_registration_number',
+            'university_name',
+            'university_registration_number',
             'official_email',
             'official_phone_number',
             'address',

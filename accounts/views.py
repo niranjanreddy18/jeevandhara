@@ -5,7 +5,7 @@ from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
-from .serializers import RegisterSerializer
+from .serializers import *
 
 User = get_user_model()
 
@@ -13,7 +13,7 @@ User = get_user_model()
 class RegisterView(APIView):
 
     def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
+        serializer = RegisterWithProfileSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
