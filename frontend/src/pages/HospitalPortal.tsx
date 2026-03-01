@@ -87,6 +87,8 @@ const HospitalPortal = () => {
   const [orgName, setOrgName] = useState('');
   const [certificateName, setCertificateName] = useState('');
   const [view, setView] = useState<'dashboard' | 'submit' | 'my' | 'profile'>('dashboard');
+  // whether the card is showing login or register form
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -128,41 +130,55 @@ const HospitalPortal = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Login panel */}
-              <div className="p-4 bg-muted/10 rounded-md">
-                <h2 className="font-semibold mb-3">Already registered? Login</h2>
-                <div className="space-y-3">
-                  <div>
-                    <Label>Hospital Registration ID</Label>
-                    <Input value={regId} onChange={(e) => setRegId(e.target.value)} placeholder="HOSP-2024-0042" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label>Password</Label>
-                    <Input type="password" id="hospital-pass" placeholder="••••••" className="mt-1" />
-                  </div>
-                  <Button className="w-full bg-primary text-primary-foreground" onClick={() => {
-                    const passEl = document.getElementById('hospital-pass') as HTMLInputElement | null;
-                    const pwd = passEl?.value || '';
-                    if (!regId || !pwd) { alert('Please enter registration ID and password'); return; }
-                    if (authenticateHospital(regId, pwd)) {
-                      setLoggedIn(true);
-                      navigate('/hospital/dashboard');
-                    } else {
-                      alert('Invalid credentials or not registered');
-                    }
-                  }}>
-                    <LogIn className="w-4 h-4 mr-2" /> Sign In
-                  </Button>
-                </div>
-              </div>
+            {/* toggle buttons */}
+          <div className="flex space-x-2 mb-6">
+            <button
+              className={`px-4 py-2 rounded ${mode === 'login' ? 'bg-primary text-primary-foreground' : 'bg-muted/10'}`}
+              onClick={() => setMode('login')}
+            >
+              Login
+            </button>
+            <button
+              className={`px-4 py-2 rounded ${mode === 'register' ? 'bg-primary text-primary-foreground' : 'bg-muted/10'}`}
+              onClick={() => setMode('register')}
+            >
+              Register
+            </button>
+          </div>
 
-              {/* Register panel */}
-              <div className="p-4 bg-muted/10 rounded-md">
-                <h2 className="font-semibold mb-3">New here? Register</h2>
-                <RegisterForm onRegistered={(rId, pwd) => { setRegId(rId); setLoggedIn(true); navigate('/hospital/dashboard'); }} />
+          {mode === 'login' ? (
+            <div className="p-4 bg-muted/10 rounded-md">
+              <h2 className="font-semibold mb-3">Hospital Login</h2>
+              <div className="space-y-3">
+                <div>
+                  <Label>Hospital Registration ID</Label>
+                  <Input value={regId} onChange={(e) => setRegId(e.target.value)} placeholder="HOSP-2024-0042" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Password</Label>
+                  <Input type="password" id="hospital-pass" placeholder="••••••" className="mt-1" />
+                </div>
+                <Button className="w-full bg-primary text-primary-foreground" onClick={() => {
+                  const passEl = document.getElementById('hospital-pass') as HTMLInputElement | null;
+                  const pwd = passEl?.value || '';
+                  if (!regId || !pwd) { alert('Please enter registration ID and password'); return; }
+                  if (authenticateHospital(regId, pwd)) {
+                    setLoggedIn(true);
+                    navigate('/hospital/dashboard');
+                  } else {
+                    alert('Invalid credentials or not registered');
+                  }
+                }}>
+                  <LogIn className="w-4 h-4 mr-2" /> Sign In
+                </Button>
               </div>
             </div>
+          ) : (
+            <div className="p-4 bg-muted/10 rounded-md">
+              <h2 className="font-semibold mb-3">Hospital Registration</h2>
+              <RegisterForm onRegistered={(rId, pwd) => { setRegId(rId); setLoggedIn(true); navigate('/hospital/dashboard'); }} />
+            </div>
+          )}
           </div>
         </div>
       </div>

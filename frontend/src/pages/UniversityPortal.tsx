@@ -280,61 +280,110 @@ const UniversityPortal = () => {
   };
 
   if (!loggedIn) {
-    return (
-      <div className="py-10">
-        <div className="container max-w-3xl">
-          <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">University Login / Register</h1>
-                <p className="text-sm text-muted-foreground">Sign in with your University ID or register a new account</p>
-              </div>
-            </div>
+  const [mode, setMode] = useState<'login' | 'register'>('login');
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Login panel */}
-              <div className="p-4 bg-muted/10 rounded-md">
-                <h2 className="font-semibold mb-3">Already registered? Login</h2>
-                <div className="space-y-3">
-                  <div>
-                    <Label>University ID</Label>
-                    <Input value={uniId} onChange={(e) => setUniId(e.target.value)} placeholder="UNI-2024-0001" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label>Password</Label>
-                    <Input type="password" id="uni-pass" placeholder="••••••" className="mt-1" />
-                  </div>
-                  <Button className="w-full bg-primary text-primary-foreground" onClick={() => {
-                    const passEl = document.getElementById('uni-pass') as HTMLInputElement | null;
-                    const pwd = passEl?.value || '';
-                    if (!uniId || !pwd) { alert('Please enter university ID and password'); return; }
-                    if (authenticateUniversity(uniId, pwd)) {
+  return (
+    <div className="py-10">
+      <div className="container max-w-3xl">
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                University Login / Register
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Sign in with your University ID or create a new account
+              </p>
+            </div>
+          </div>
+
+          {/* Toggle Buttons */}
+          <div className="flex space-x-2 mb-6">
+            <button
+              className={`px-4 py-2 rounded ${
+                mode === 'login'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted/10'
+              }`}
+              onClick={() => setMode('login')}
+            >
+              Login
+            </button>
+            <button
+              className={`px-4 py-2 rounded ${
+                mode === 'register'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted/10'
+              }`}
+              onClick={() => setMode('register')}
+            >
+              Register
+            </button>
+          </div>
+
+          {mode === 'login' ? (
+            <div className="p-4 bg-muted/10 rounded-md">
+              <h2 className="font-semibold mb-3">University Login</h2>
+              <div className="space-y-3">
+                <div>
+                  <Label>University ID</Label>
+                  <Input
+                    value={uniId}
+                    onChange={(e) => setUniId(e.target.value)}
+                    placeholder="UNI-2024-0001"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Password</Label>
+                  <Input
+                    type="password"
+                    value={uniPass}
+                    onChange={(e) => setUniPass(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <Button
+                  className="w-full bg-primary text-primary-foreground"
+                  onClick={() => {
+                    if (!uniId || !uniPass) {
+                      alert('Please enter university ID and password');
+                      return;
+                    }
+                    if (authenticateUniversity(uniId, uniPass)) {
                       setLoggedIn(true);
                       navigate('/university/dashboard');
                     } else {
-                      alert('Invalid credentials or not registered');
+                      alert('Invalid credentials');
                     }
-                  }}>
-                    <LogIn className="w-4 h-4 mr-2" /> Sign In
-                  </Button>
-                </div>
-              </div>
-
-              {/* Register panel */}
-              <div className="p-4 bg-muted/10 rounded-md">
-                <h2 className="font-semibold mb-3">New here? Register</h2>
-                <UniversityRegisterForm onRegistered={(newUniId, pwd) => { setUniId(newUniId); setUniPass(pwd); setLoggedIn(true); navigate('/university/dashboard'); }} />
+                  }}
+                >
+                  <LogIn className="w-4 h-4 mr-2" /> Sign In
+                </Button>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-4 bg-muted/10 rounded-md">
+              <h2 className="font-semibold mb-3">University Registration</h2>
+              <UniversityRegisterForm
+                onRegistered={(newUniId, pwd) => {
+                  setUniId(newUniId);
+                  setUniPass(pwd);
+                  setLoggedIn(true);
+                  navigate('/university/dashboard');
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
-    );
-  }
-
+    </div>
+  );
+}
   return (
     <div className="flex min-h-screen">
       {/* sidebar */}
