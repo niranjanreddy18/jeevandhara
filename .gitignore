@@ -17,6 +17,8 @@ ENV/
 # Environment Variables (Secrets)
 # ===============================
 .env
+.env.local
+.env.production
 
 # ===============================
 # Django
@@ -27,9 +29,9 @@ db.sqlite3
 /media/
 
 # ===============================
-# Migrations (optional)
+# Django Migrations (KEEP normally)
 # ===============================
-# Uncomment ONLY if you want to ignore migrations
+# DO NOT ignore migrations unless special case
 # */migrations/*
 # !*/migrations/__init__.py
 
@@ -44,9 +46,17 @@ db.sqlite3
 # ===============================
 .DS_Store
 Thumbs.db
+
 # ===============================
-# Frontend (Node)
+# Frontend (Node / React / Next)
 # ===============================
-frontend/jeevandhara/node_modules/
-frontend/jeevandhara/.next/
-frontend/jeevandhara/out/
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# If frontend is inside subfolder
+frontend/**/node_modules/
+frontend/**/.next/
+frontend/**/out/

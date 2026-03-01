@@ -1,62 +1,333 @@
-import { GraduationCap, LogIn, BookOpen, Download, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { GraduationCap, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  validateUniversityId,
+  validateUniversityEmail,
+  registerUniversity,
+  authenticateUniversity,
+  registeredUniversities,
+} from "@/lib/universities";
 
-const initialFundableCases = [
-  { id: "JD-2847", disease: "Cancer", hospital: "AIIMS Delhi", required: 850000, collected: 612000, urgency: "Critical" },
-  { id: "JD-2845", disease: "Kidney", hospital: "CMC Vellore", required: 450000, collected: 125000, urgency: "Medium" },
-  { id: "JD-2841", disease: "Cardiac", hospital: "Narayana Health", required: 750000, collected: 200000, urgency: "High" },
-];
+type UniversityRegisterFormProps = { onRegistered: (uniId: string, password: string) => void };
 
-const initialTransactions = [
-  { date: "2026-02-20", case: "JD-2852", amount: 200000, status: "Refunding" },
-  { date: "2026-02-15", case: "JD-2844", amount: 500000, status: "Completed" },
-  { date: "2026-02-05", case: "JD-2840", amount: 100000, status: "Failed" },
-  { date: "2026-01-28", case: "JD-2839", amount: 300000, status: "Completed" },
-  { date: "2026-01-10", case: "JD-2835", amount: 750000, status: "Completed" },
-];
+const UniversityRegisterForm = ({ onRegistered }: UniversityRegisterFormProps) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [certificates, setCertificates] = useState('');
+  const [uniId, setUniId] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
 
-const formatCurrency = (n: number) => `₹${(n / 100000).toFixed(1)}L`;
+  const tryRegister = () => {
+    if (!name || !email || !uniId || !password) { alert('Please fill required fields'); return; }
+    if (!validateUniversityEmail(email, name)) { alert('University email must contain the university name and end with .ac.in, .edu.in or .res.in'); return; }
+    if (!validateUniversityId(uniId)) { alert('University ID must follow UNI-YYYY-NNNN format'); return; }
+    if (password.length < 6) { alert('Password must be at least 6 characters'); return; }
+    if (password !== confirm) { alert('Passwords do not match'); return; }
+    const ok = registerUniversity({ uniId, name, email, address, certificates, password });
+    if (ok) {
+      alert('Registration successful — you are logged in');
+      onRegistered(uniId, password);
+    } else {
+      alert('Registration failed: university already registered');
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label>University Name</Label>
+        <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
+      </div>
+      <div>
+        <Label>University Email</Label>
+        <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@iitd.ac.in" className="mt-1" />
+      </div>
+      <div>
+        <Label>Address</Label>
+        <Input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1" />
+      </div>
+      <div>
+        <Label>Verified Certificates (document)</Label>
+        <Input type="file" onChange={(e) => {
+          const f = (e.target as HTMLInputElement).files?.[0];
+          setCertificates(f ? f.name : '');
+        }} className="mt-1" />
+        {certificates && <p className="text-xs text-muted-foreground mt-1">Selected: {certificates}</p>}
+      </div>
+      <div>
+        <Label>University ID</Label>
+        <Input value={uniId} onChange={(e) => setUniId(e.target.value)} placeholder="UNI-2024-0001" className="mt-1" />
+      </div>
+      <div>
+        <Label>Password</Label>
+        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1" />
+      </div>
+      <div>
+        <Label>Confirm Password</Label>
+        <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="mt-1" />
+      </div>
+      <Button className="w-full bg-accent text-accent-foreground" onClick={tryRegister}>Create Account</Button>
+    </div>
+  );
+};
 
 const UniversityPortal = () => {
   const [loggedIn, setLoggedIn] = useState(false);
-  const [cases, setCases] = useState(initialFundableCases);
-  const [transactions, setTransactions] = useState(initialTransactions);
-  const [query, setQuery] = useState('');
-  const filteredCases = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return cases.filter(c => !q || c.disease.toLowerCase().includes(q) || c.hospital.toLowerCase().includes(q));
-  }, [cases, query]);
+  const [uniId, setUniId] = useState('');
+  const [uniPass, setUniPass] = useState('');
+  // view controls which sidebar page is shown after login
+  const [view, setView] = useState<
+    'dashboard' | 'approved' | 'payments' | 'reports' | 'profile'
+  >('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // sync view with URL so sidebar links work and can be bookmarked
+  useEffect(() => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    const last = parts[parts.length - 1] || 'dashboard';
+    if (['dashboard', 'approved', 'payments', 'reports', 'profile'].includes(last)) {
+      setView(last as any);
+    } else if (location.pathname.endsWith('/university')) {
+      setView('dashboard');
+    }
+  }, [location.pathname]);
+
+  // sample static data used by all sections
+  const approvedPatients = [
+    { name: 'Meena Devi', hospital: 'Fortis Hospital', amount: '₹60,000', status: 'Approved' },
+    { name: 'Anjali Verma', hospital: 'Max Healthcare', amount: '₹45,000', status: 'Approved' },
+    { name: 'Ravi Kumar', hospital: 'City Hospital', amount: '₹75,000', status: 'Approved' },
+  ];
+  const paymentHistory = [
+    { date: '2026-02-20', patient: 'Meena Devi', amount: '₹60,000', status: 'Paid' },
+    { date: '2026-02-18', patient: 'Anjali Verma', amount: '₹45,000', status: 'Paid' },
+    { date: '2026-02-15', patient: 'Ravi Kumar', amount: '₹75,000', status: 'Paid' },
+  ];
+  const reports = [
+    { caseId: 'JD-2847', hospital: 'AIIMS Delhi', report: 'View' },
+    { caseId: 'JD-2845', hospital: 'CMC Vellore', report: 'View' },
+  ];
+  const profileInfo = {
+    university: 'IIT Delhi',
+    contact: 'contact@iitd.ac.in',
+    phone: '+91 11 2659 7135',
+  };
+
+  // helper to render sidebar content
+  const renderContent = () => {
+    switch (view) {
+      case 'dashboard':
+        return (
+          <>
+            <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="bg-card rounded-xl p-5">
+                <p className="text-sm text-muted-foreground">Total Approved</p>
+                <p className="text-2xl font-bold">124</p>
+                <p className="text-xs text-muted-foreground">Patients approved this month</p>
+              </div>
+              <div className="bg-card rounded-xl p-5">
+                <p className="text-sm text-muted-foreground">Total Disbursed</p>
+                <p className="text-2xl font-bold">₹48,50,000</p>
+                <p className="text-xs text-muted-foreground">Funds disbursed so far</p>
+              </div>
+              <div className="bg-card rounded-xl p-5">
+                <p className="text-sm text-muted-foreground">Payments Done</p>
+                <p className="text-2xl font-bold">98</p>
+                <p className="text-xs text-muted-foreground">Successfully completed</p>
+              </div>
+              <div className="bg-card rounded-xl p-5">
+                <p className="text-sm text-muted-foreground">Pending Payments</p>
+                <p className="text-2xl font-bold">26</p>
+                <p className="text-xs text-muted-foreground">Awaiting fund transfer</p>
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold mb-3">Recent Activity</h3>
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Patient</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Hospital</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Amount</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {approvedPatients.map((p, idx) => (
+                    <tr key={idx} className="border-b border-border last:border-0">
+                      <td className="px-5 py-3">{p.name}</td>
+                      <td className="px-5 py-3">{p.hospital}</td>
+                      <td className="px-5 py-3 font-semibold">{p.amount}</td>
+                      <td className="px-5 py-3 text-success">{p.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        );
+
+      case 'approved':
+        return (
+          <>
+            <h2 className="text-xl font-semibold mb-4">Approved Patients</h2>
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Name</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Hospital</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Amount</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {approvedPatients.map((p, idx) => (
+                    <tr key={idx} className="border-b border-border last:border-0">
+                      <td className="px-5 py-3">{p.name}</td>
+                      <td className="px-5 py-3">{p.hospital}</td>
+                      <td className="px-5 py-3 font-semibold">{p.amount}</td>
+                      <td className="px-5 py-3 text-success">{p.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        );
+
+      case 'payments':
+        return (
+          <>
+            <h2 className="text-xl font-semibold mb-4">Payment History</h2>
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Date</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Patient</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Amount</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentHistory.map((p, idx) => (
+                    <tr key={idx} className="border-b border-border last:border-0">
+                      <td className="px-5 py-3">{p.date}</td>
+                      <td className="px-5 py-3">{p.patient}</td>
+                      <td className="px-5 py-3 font-semibold">{p.amount}</td>
+                      <td className="px-5 py-3 text-success">{p.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        );
+
+      case 'reports':
+        return (
+          <>
+            <h2 className="text-xl font-semibold mb-4">Patient Reports</h2>
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Case ID</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Hospital</th>
+                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Report</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.map((r, idx) => (
+                    <tr key={idx} className="border-b border-border last:border-0">
+                      <td className="px-5 py-3 font-mono">{r.caseId}</td>
+                      <td className="px-5 py-3">{r.hospital}</td>
+                      <td className="px-5 py-3">
+                        <Button size="sm" variant="ghost">{r.report}</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        );
+
+      case 'profile':
+        return (
+          <>
+            <h2 className="text-xl font-semibold mb-4">Profile</h2>
+            <div className="space-y-2">
+              <p><strong>University:</strong> {profileInfo.university}</p>
+              <p><strong>Contact:</strong> {profileInfo.contact}</p>
+              <p><strong>Phone:</strong> {profileInfo.phone}</p>
+            </div>
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   if (!loggedIn) {
     return (
-      <div className="py-20">
-        <div className="container max-w-md">
-          <div className="bg-card rounded-xl border border-border p-8 shadow-sm">
+      <div className="py-10">
+        <div className="container max-w-3xl">
+          <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
                 <GraduationCap className="w-5 h-5 text-accent" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground">University Portal</h1>
-                <p className="text-sm text-muted-foreground">Institutional funding access</p>
+                <h1 className="text-xl font-bold text-foreground">University Login / Register</h1>
+                <p className="text-sm text-muted-foreground">Sign in with your University ID or register a new account</p>
               </div>
             </div>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="uni-id">University ID</Label>
-                <Input id="uni-id" placeholder="e.g., UNI-IIT-DEL-001" className="mt-1.5" />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Login panel */}
+              <div className="p-4 bg-muted/10 rounded-md">
+                <h2 className="font-semibold mb-3">Already registered? Login</h2>
+                <div className="space-y-3">
+                  <div>
+                    <Label>University ID</Label>
+                    <Input value={uniId} onChange={(e) => setUniId(e.target.value)} placeholder="UNI-2024-0001" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label>Password</Label>
+                    <Input type="password" id="uni-pass" placeholder="••••••" className="mt-1" />
+                  </div>
+                  <Button className="w-full bg-primary text-primary-foreground" onClick={() => {
+                    const passEl = document.getElementById('uni-pass') as HTMLInputElement | null;
+                    const pwd = passEl?.value || '';
+                    if (!uniId || !pwd) { alert('Please enter university ID and password'); return; }
+                    if (authenticateUniversity(uniId, pwd)) {
+                      setLoggedIn(true);
+                      navigate('/university/dashboard');
+                    } else {
+                      alert('Invalid credentials or not registered');
+                    }
+                  }}>
+                    <LogIn className="w-4 h-4 mr-2" /> Sign In
+                  </Button>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="uni-pass">Password</Label>
-                <Input id="uni-pass" type="password" placeholder="••••••••" className="mt-1.5" />
+
+              {/* Register panel */}
+              <div className="p-4 bg-muted/10 rounded-md">
+                <h2 className="font-semibold mb-3">New here? Register</h2>
+                <UniversityRegisterForm onRegistered={(newUniId, pwd) => { setUniId(newUniId); setUniPass(pwd); setLoggedIn(true); navigate('/university/dashboard'); }} />
               </div>
-              <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setLoggedIn(true)}>
-                <LogIn className="w-4 h-4 mr-2" /> Sign In
-              </Button>
             </div>
           </div>
         </div>
@@ -65,132 +336,62 @@ const UniversityPortal = () => {
   }
 
   return (
-    <div className="py-10">
-      <div className="container max-w-5xl">
+    <div className="flex min-h-screen">
+      {/* sidebar */}
+      <nav className="w-64 bg-slate-50 border-r border-border p-6">
+        <h2 className="text-lg font-bold mb-6">College Management</h2>
+        <ul className="space-y-3 text-sm">
+          <li>
+            <button
+              className={`w-full text-left ${view === 'dashboard' ? 'font-semibold text-accent' : ''}`}
+              onClick={() => navigate('/university/dashboard')}
+            >
+              Dashboard
+            </button>
+          </li>
+          <li>
+            <button
+              className={`w-full text-left ${view === 'approved' ? 'font-semibold text-accent' : ''}`}
+              onClick={() => navigate('/university/approved')}
+            >
+              Approved Patients
+            </button>
+          </li>
+          <li>
+            <button
+              className={`w-full text-left ${view === 'payments' ? 'font-semibold text-accent' : ''}`}
+              onClick={() => navigate('/university/payments')}
+            >
+              Payment History
+            </button>
+          </li>
+          <li>
+            <button
+              className={`w-full text-left ${view === 'reports' ? 'font-semibold text-accent' : ''}`}
+              onClick={() => navigate('/university/reports')}
+            >
+              Patient Reports
+            </button>
+          </li>
+          <li>
+            <button
+              className={`w-full text-left ${view === 'profile' ? 'font-semibold text-accent' : ''}`}
+              onClick={() => navigate('/university/profile')}
+            >
+              Profile
+            </button>
+          </li>
+        </ul>
+      </nav>
+      {/* main content */}
+      <main className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">University Dashboard</h1>
-            <p className="text-sm text-muted-foreground">IIT Delhi — CSR Funding Division</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setLoggedIn(false)}>Sign Out</Button>
+          <h1 className="text-2xl font-bold">{view === 'dashboard' ? 'Dashboard' : view.charAt(0).toUpperCase() + view.slice(1).replace(/s$/, '')}</h1>
+          <Button variant="outline" size="sm" onClick={() => { setLoggedIn(false); navigate('/university'); }}>Logout</Button>
         </div>
-        {/* Summary metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-card rounded-xl border border-border p-5">
-            <p className="text-sm text-muted-foreground">Available Cases</p>
-            <p className="text-2xl font-bold">{cases.length}</p>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-5">
-            <p className="text-sm text-muted-foreground">Total Collected</p>
-            <p className="text-2xl font-bold">{formatCurrency(cases.reduce((s, x) => s + x.collected, 0))}</p>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-5">
-            <p className="text-sm text-muted-foreground">Total Required</p>
-            <p className="text-2xl font-bold">{formatCurrency(cases.reduce((s, x) => s + x.required, 0))}</p>
-          </div>
-        </div>
-
-        {/* Cases to Fund */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-accent" /> Available Cases for Funding
-          </h2>
-          <div className="w-72">
-            <Input placeholder="Search by disease or hospital" value={query} onChange={(e) => setQuery(e.target.value)} />
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-4 mb-10">
-          {filteredCases.map(c => {
-            const pct = Math.round((c.collected / c.required) * 100);
-            const remaining = Math.max(0, c.required - c.collected);
-            const urgencyColor = c.urgency === 'Critical' ? 'text-destructive bg-destructive/10' : c.urgency === 'High' ? 'text-accent bg-accent/10' : 'text-foreground bg-muted/10';
-            return (
-              <div key={c.id} className="bg-card rounded-xl border border-border p-5 shadow-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-xs font-mono text-muted-foreground">{c.id}</span>
-                    <h3 className="text-base font-semibold text-foreground mt-1">{c.disease}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">{c.hospital}</p>
-                  </div>
-                  <div>
-                    <span className={`text-xs font-medium px-2 py-1 rounded ${urgencyColor}`}>{c.urgency}</span>
-                  </div>
-                </div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-muted-foreground">{formatCurrency(c.collected)} / {formatCurrency(c.required)}</span>
-                  <span className="font-medium text-foreground">{pct}%</span>
-                </div>
-                <Progress value={pct} className="h-1.5 mb-3" />
-                <div className="flex gap-2">
-                  <Button size="sm" className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => {
-                    const input = prompt(`Enter amount to fund (in ₹) for ${c.id} - remaining ${formatCurrency(remaining)}:`);
-                    if (!input) return;
-                    const amt = Number(input.replace(/[^0-9.-]+/g, ''));
-                    if (isNaN(amt) || amt <= 0) { alert('Invalid amount'); return; }
-                    const toAdd = Math.min(amt, remaining);
-                    setCases(prev => prev.map(p => p.id === c.id ? { ...p, collected: p.collected + toAdd } : p));
-                    setTransactions(prev => [{ date: new Date().toISOString().slice(0,10), case: c.id, amount: toAdd, status: 'Completed' }, ...prev]);
-                    alert(`Thank you — ₹${(toAdd/100000).toFixed(1)}L funded to ${c.id}`);
-                  }} disabled={pct >= 100}>
-                    Fund This Case
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => alert('View details not implemented')}>View</Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Transaction History */}
-        <h2 className="text-lg font-semibold text-foreground mb-4">Transaction History</h2>
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Date</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Case ID</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Amount</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Receipt</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((t, i) => (
-                <tr key={i} className="border-b border-border last:border-0">
-                  <td className="px-5 py-3 text-muted-foreground">{t.date}</td>
-                  <td className="px-5 py-3 font-mono text-foreground">{t.case}</td>
-                  <td className="px-5 py-3 font-semibold text-foreground">{formatCurrency(t.amount)}</td>
-                  <td className="px-5 py-3">
-                    {t.status === 'Completed' && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
-                        <CheckCircle className="w-3 h-3" /> {t.status}
-                      </span>
-                    )}
-                    {t.status === 'Refunding' && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-accent">
-                        <RefreshCw className="w-3 h-3" /> {t.status}
-                      </span>
-                    )}
-                    {t.status === 'Failed' && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
-                        <XCircle className="w-3 h-3" /> {t.status}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3">
-                    <Button variant="ghost" size="sm" className="text-accent">
-                      <Download className="w-3.5 h-3.5 mr-1" /> PDF
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        {renderContent()}
+      </main>
     </div>
   );
 };
-
 export default UniversityPortal;

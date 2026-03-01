@@ -41,7 +41,7 @@ const Header = () => {
 
         <div className="hidden md:flex items-center gap-2">
           <Button size="sm" className="bg-accent text-accent-foreground hover:bg-white hover:text-accent" asChild>
-            <Link to="/hospital">Hospital Login</Link>
+            <Link to="/hospital">Hospital Login/Register</Link>
           </Button>
           <Button size="sm" className="bg-accent text-accent-foreground hover:bg-white hover:text-accent" asChild>
             <Link to="/university">University Login</Link>
@@ -70,7 +70,7 @@ const Header = () => {
           ))}
           <div className="pt-2 flex flex-col gap-2">
             <Button size="sm" className="bg-accent text-accent-foreground hover:bg-white hover:text-accent" asChild>
-              <Link to="/hospital" onClick={() => setMobileOpen(false)}>Hospital Login</Link>
+              <Link to="/hospital" onClick={() => setMobileOpen(false)}>Hospital Login/Register</Link>
             </Button>
             <Button size="sm" className="bg-accent text-accent-foreground hover:bg-white hover:text-accent" asChild>
               <Link to="/university" onClick={() => setMobileOpen(false)}>University Login</Link>
