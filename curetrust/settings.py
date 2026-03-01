@@ -45,9 +45,6 @@ INSTALLED_APPS = [
     'accounts',
     'rest_framework',
     'corsheaders',
-    'hospital',
-    'medicalcases',
-    'university',
 ]
 
 MIDDLEWARE = [
