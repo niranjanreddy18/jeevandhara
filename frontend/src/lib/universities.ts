@@ -18,6 +18,7 @@ type RegisteredUniversity = {
 const APPROVED_KEY = 'jh_approved_universities_v1';
 const PENDING_KEY = 'jh_pending_university_verifications_v1';
 const PASSWORDS_KEY = 'jh_university_passwords_v1';
+const REJECTED_KEY = 'jh_rejected_universities_v1';
 
 function loadApproved(): Record<string, { uniId: string; name?: string }> {
   try {
@@ -33,6 +34,14 @@ function loadApproved(): Record<string, { uniId: string; name?: string }> {
 function loadPending(): UniversityVerification[] {
   try {
     const raw = localStorage.getItem(PENDING_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return [];
+}
+
+function loadRejected(): Array<UniversityVerification & { reason?: string; rejectedAt?: number }> {
+  try {
+    const raw = localStorage.getItem(REJECTED_KEY);
     if (raw) return JSON.parse(raw);
   } catch (e) {}
   return [];
@@ -65,6 +74,8 @@ function savePasswords(m: Record<string, string>) {
 export const approvedUniversities: Record<string, { uniId: string; name?: string }> = loadApproved();
 export const pendingUniversityVerifications: UniversityVerification[] = loadPending();
 export const universityPasswords: Record<string, string> = loadPasswords();
+
+export const rejectedUniversities: Array<UniversityVerification & { reason?: string; rejectedAt?: number }> = loadRejected();
 
 export const registeredUniversities: Record<string, RegisteredUniversity> = {};
 
@@ -132,11 +143,18 @@ export function approveUniversityVerification(uniId: string) {
   saveApproved(approvedUniversities);
   return true;
 }
+function saveRejected(list: Array<UniversityVerification & { reason?: string; rejectedAt?: number }>) {
+  try { localStorage.setItem(REJECTED_KEY, JSON.stringify(list)); } catch (e) {}
+}
 
-export function rejectUniversityVerification(uniId: string) {
+export function rejectUniversityVerification(uniId: string, reason?: string) {
   const idx = pendingUniversityVerifications.findIndex(p => p.uniId === uniId);
   if (idx === -1) return false;
-  pendingUniversityVerifications.splice(idx, 1);
+  const v = pendingUniversityVerifications.splice(idx, 1)[0];
+  const rejected = { ...v, reason: reason || 'Rejected by admin', rejectedAt: Date.now() };
+  rejectedUniversities.push(rejected);
+  saveRejected(rejectedUniversities);
   savePending(pendingUniversityVerifications);
+  try { window.dispatchEvent(new CustomEvent('jh:pending-updated')); } catch (e) {}
   return true;
 }

@@ -8,6 +8,7 @@ export type HospitalVerification = {
 
 const APPROVED_KEY = 'jh_approved_hospitals_v1';
 const PENDING_KEY = 'jh_pending_verifications_v1';
+const REJECTED_KEY = 'jh_rejected_hospitals_v1';
 
 function loadApproved(): Record<string, { regId: string; name?: string }> {
   try {
@@ -88,6 +89,14 @@ function loadPasswords(): Record<string, string> {
   };
 }
 
+function loadRejected(): Array<HospitalVerification & { reason?: string; rejectedAt?: number }> {
+  try {
+    const raw = localStorage.getItem(REJECTED_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return [];
+}
+
 function savePasswords(m: Record<string, string>) {
   try { localStorage.setItem(PASSWORDS_KEY, JSON.stringify(m)); } catch (e) {}
 }
@@ -95,6 +104,7 @@ function savePasswords(m: Record<string, string>) {
 export const registeredHospitals: Record<string, RegisteredHospital> = loadRegistered();
 export const hospitalSubmissions: any[] = loadSubmissions();
 export const hospitalPasswords: Record<string, string> = loadPasswords();
+export const rejectedHospitals: Array<HospitalVerification & { reason?: string; rejectedAt?: number }> = loadRejected();
 
 export function validateHospitalRegNumber(reg: string) {
   // Expected format HOSP-YYYY-NNNN
@@ -146,7 +156,9 @@ export function authenticateHospital(regId: string, password: string) {
 }
 
 export function submitPatientCase(regId: string, data: any) {
-  const entry = { regId, ...data, submittedAt: Date.now(), status: 'pending' };
+  // Generate AI score (40-95 range)
+  const aiScore = Math.floor(Math.random() * 56) + 40;
+  const entry = { regId, ...data, submittedAt: Date.now(), status: 'pending', aiScore };
   hospitalSubmissions.push(entry);
   saveSubmissions(hospitalSubmissions);
   try { window.dispatchEvent(new CustomEvent('jh:cases-updated')); } catch (e) {}
@@ -203,10 +215,18 @@ export function approveVerification(regId: string) {
   return true;
 }
 
+function saveRejected(list: Array<HospitalVerification & { reason?: string; rejectedAt?: number }>) {
+  try { localStorage.setItem(REJECTED_KEY, JSON.stringify(list)); } catch (e) {}
+}
+
 export function rejectVerification(regId: string) {
   const idx = pendingVerifications.findIndex(p => p.regId === regId);
   if (idx === -1) return false;
-  pendingVerifications.splice(idx, 1);
+  const v = pendingVerifications.splice(idx, 1)[0];
+  // record rejection
+  const rejected = { ...v, reason: 'Rejected by admin', rejectedAt: Date.now() };
+  rejectedHospitals.push(rejected);
+  saveRejected(rejectedHospitals);
   savePending(pendingVerifications);
   return true;
 }

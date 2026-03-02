@@ -30,7 +30,7 @@ const RegisterForm = ({ onRegistered }: RegisterFormProps) => {
   const tryRegister = () => {
     if (!name || !email || !regNumber || !password) { alert('Please fill required fields'); return; }
     if (!validateHospitalEmail(email)) { alert('Please use a professional hospital email (hospital/health/clinic or .edu/.org)'); return; }
-    if (!validateHospitalRegNumber(regNumber)) { alert('Registration number must follow HOSP-YYYY-NNNN'); return; }
+   // if (!validateHospitalRegNumber(regNumber)) { alert('Registration number must follow HOSP-YYYY-NNNN'); return; }
     if (password.length < 6) { alert('Password must be at least 6 characters'); return; }
     if (password !== confirm) { alert('Passwords do not match'); return; }
     const ok = registerHospital({ regId: regNumber, name, email, address, certificates, password });
@@ -245,47 +245,60 @@ const HospitalPortal = () => {
           <Button variant="outline" size="sm" onClick={() => { setLoggedIn(false); navigate('/hospital'); }}>Sign Out</Button>
         </div>
 
-        {view === 'dashboard' && (
-          <>
-            <div className="grid md:grid-cols-3 gap-4 mb-8">
-              {[
-                { label: "Total Patients", value: "4", icon: FileText },
-                { label: "Approved", value: "2", icon: Clock },
-                { label: "Pending", value: "1", icon: Upload },
-              ].map((s, i) => (
-                <div key={i} className="bg-card rounded-xl border border-border p-5 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                    <s.icon className="w-5 h-5 text-accent" />
+        {view === 'dashboard' && (() => {
+          const myCases = hospitalSubmissions.filter((s: any) => s.regId === (regId || 'UNREGISTERED'));
+          const totalCases = myCases.length;
+          const approvedCases = myCases.filter((s: any) => s.status === 'approved').length;
+          const pendingCases = myCases.filter((s: any) => s.status === 'pending').length;
+          const recentCases = myCases.slice(-5).reverse();
+          
+          return (
+            <>
+              <div className="grid md:grid-cols-3 gap-4 mb-8">
+                {[
+                  { label: "Total Patients", value: String(totalCases), icon: FileText },
+                  { label: "Approved", value: String(approvedCases), icon: Clock },
+                  { label: "Pending", value: String(pendingCases), icon: Upload },
+                ].map((s, i) => (
+                  <div key={i} className="bg-card rounded-xl border border-border p-5 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                      <s.icon className="w-5 h-5 text-accent" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">{s.value}</p>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{s.value}</p>
-                    <p className="text-xs text-muted-foreground">{s.label}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <div className="bg-card rounded-xl border border-border overflow-hidden p-6 mb-6">
-              <h3 className="text-lg font-semibold mb-3">Recent Submissions</h3>
-              <ul className="space-y-3">
-                <li className="p-4 bg-muted/10 rounded-md flex justify-between items-center">
-                  <div>
-                    <div className="font-medium">Rahul Sharma</div>
-                    <div className="text-xs text-muted-foreground">Cardiac Arrhythmia</div>
-                  </div>
-                  <div className="text-sm text-success">approved</div>
-                </li>
-                <li className="p-4 bg-muted/10 rounded-md flex justify-between items-center">
-                  <div>
-                    <div className="font-medium">Priya Patel</div>
-                    <div className="text-xs text-muted-foreground">Kidney Stones</div>
-                  </div>
-                  <div className="text-sm text-amber-600">pending</div>
-                </li>
-              </ul>
-            </div>
-          </>
-        )}
+              <div className="bg-card rounded-xl border border-border overflow-hidden p-6 mb-6">
+                <h3 className="text-lg font-semibold mb-3">Recent Submissions</h3>
+                {recentCases.length > 0 ? (
+                  <ul className="space-y-3">
+                    {recentCases.map((s: any, i: number) => (
+                      <li key={i} className="p-4 bg-muted/10 rounded-md flex justify-between items-center">
+                        <div>
+                          <div className="font-medium">{s.patientName}</div>
+                          <div className="text-xs text-muted-foreground">{s.diseaseName}</div>
+                        </div>
+                        <div className={`text-sm font-semibold px-2.5 py-1 rounded ${
+                          s.status === 'approved' ? 'bg-success/15 text-success' :
+                          s.status === 'rejected' ? 'bg-destructive/15 text-destructive' :
+                          'bg-amber-100/30 text-amber-700'
+                        }`}>
+                          {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No submissions yet</p>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
         {view === 'submit' && (
           <div className="bg-card rounded-xl border border-border p-8 shadow-sm">
