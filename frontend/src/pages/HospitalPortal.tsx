@@ -777,38 +777,56 @@ const HospitalPortal = () => {
           </div>
         )}
 
-        {view === "profile" && ((() => {
-          const hospitalData = registeredHospitals[regId || ""];
-          return (
-            <div className="bg-card rounded-xl border border-border p-6">
-              <h2 className="text-lg font-semibold mb-6">Hospital Profile</h2>
-              {hospitalData ? (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Organization Name</p>
-                    <p className="text-base font-medium text-foreground">{hospitalData.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Registration ID</p>
-                    <p className="text-base font-mono text-foreground">{hospitalData.regId}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Email</p>
-                    <p className="text-base text-foreground">{hospitalData.email}</p>
-                  </div>
-                  {hospitalData.address && (
+        {view === "profile" &&
+          (() => {
+            const hospitalData = registeredHospitals[regId || ""];
+            return (
+              <div className="bg-card rounded-xl border border-border p-6">
+                <h2 className="text-lg font-semibold mb-6">Hospital Profile</h2>
+                {hospitalData ?
+                  <div className="space-y-4">
                     <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Address</p>
-                      <p className="text-base text-foreground">{hospitalData.address}</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Organization Name
+                      </p>
+                      <p className="text-base font-medium text-foreground">
+                        {hospitalData.name}
+                      </p>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-muted-foreground">No profile data available</p>
-              )}
-            </div>
-          );
-        })())}
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Registration ID
+                      </p>
+                      <p className="text-base font-mono text-foreground">
+                        {hospitalData.regId}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Email
+                      </p>
+                      <p className="text-base text-foreground">
+                        {hospitalData.email}
+                      </p>
+                    </div>
+                    {hospitalData.address && (
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                          Address
+                        </p>
+                        <p className="text-base text-foreground">
+                          {hospitalData.address}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                : <p className="text-muted-foreground">
+                    No profile data available
+                  </p>
+                }
+              </div>
+            );
+          })()}
       </main>
     </div>
   );
