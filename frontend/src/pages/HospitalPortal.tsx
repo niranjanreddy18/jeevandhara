@@ -14,6 +14,7 @@ import {
   submitPatientCase,
   hospitalSubmissions,
 } from "@/lib/hospitals";
+import { setSession, clearSession, isAnyUserLoggedIn } from "@/lib/auth";
 
 type RegisterFormProps = { onRegistered: () => void };
 
@@ -195,6 +196,7 @@ const HospitalPortal = () => {
                   if (!regId || !pwd) { alert('Please enter registration ID and password'); return; }
                   if (authenticateHospital(regId, pwd)) {
                     setLoggedIn(true);
+                    setSession('hospital', regId);
                     navigate('/hospital/dashboard');
                   } else {
                     alert('ℹ️ Invalid credentials OR your registration is pending admin approval.\n\nIf you just registered, please wait for admin verification before logging in.');
@@ -242,7 +244,7 @@ const HospitalPortal = () => {
       <main className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-foreground">{view === 'dashboard' ? 'Dashboard' : view === 'submit' ? 'Submit Patient' : view === 'my' ? 'My Submissions' : 'Profile'}</h1>
-          <Button variant="outline" size="sm" onClick={() => { setLoggedIn(false); navigate('/hospital'); }}>Sign Out</Button>
+          <Button variant="outline" size="sm" onClick={() => { setLoggedIn(false); clearSession(); navigate('/hospital'); }}>Sign Out</Button>
         </div>
 
         {view === 'dashboard' && (() => {

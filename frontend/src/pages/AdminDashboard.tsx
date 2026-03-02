@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 import { getPendingVerifications, approveVerification, rejectVerification, hospitalSubmissions, approvePatientCase, rejectPatientCase, approvedHospitals, pendingVerifications, rejectedHospitals, registeredHospitals } from "@/lib/hospitals";
 import { getPendingUniversityVerifications, approveUniversityVerification, rejectUniversityVerification, approvedUniversities, pendingUniversityVerifications, rejectedUniversities } from "@/lib/universities";
+import { setSession, clearSession, isAnyUserLoggedIn } from "@/lib/auth";
 
 const riskColor = (r: string) => {
   if (r === "High") return "text-destructive bg-destructive/10";
@@ -13,8 +14,17 @@ const riskColor = (r: string) => {
   return "text-success bg-success/10";
 };
 
+// Hardcoded admin credentials (no database)
+const ADMIN_CREDENTIALS = {
+  id: "ADM-001",
+  password: "admin@123",
+};
+
 const AdminDashboard = () => {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [adminId, setAdminId] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
   const [pending, setPending] = useState(getPendingVerifications());
   const [approvedH, setApprovedH] = useState(() => Object.values(approvedHospitals));
   const [rejectedH, setRejectedH] = useState(() => rejectedHospitals.slice());
@@ -82,6 +92,20 @@ const AdminDashboard = () => {
   }, []);
 
   if (!loggedIn) {
+    const handleLogin = () => {
+      setLoginError("");
+      if (adminId.trim() === "" || adminPassword.trim() === "") {
+        setLoginError("Please enter both Admin ID and Password");
+        return;
+      }
+      if (adminId !== ADMIN_CREDENTIALS.id || adminPassword !== ADMIN_CREDENTIALS.password) {
+        setLoginError("Invalid Admin ID or Password");
+        return;
+      }
+      setLoggedIn(true);
+      setSession('admin', 'ADM-001');
+    };
+
     return (
       <div className="py-20">
         <div className="container max-w-md">
@@ -95,18 +119,39 @@ const AdminDashboard = () => {
                 <p className="text-sm text-muted-foreground">AI Verification Console</p>
               </div>
             </div>
+            {loginError && (
+              <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">
+                {loginError}
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <Label>Admin ID</Label>
-                <Input placeholder="ADM-001" className="mt-1.5" />
+                <Input 
+                  placeholder="ADM-001" 
+                  className="mt-1.5"
+                  value={adminId}
+                  onChange={(e) => setAdminId(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                />
               </div>
               <div>
                 <Label>Password</Label>
-                <Input type="password" placeholder="••••••••" className="mt-1.5" />
+                <Input 
+                  type="password" 
+                  placeholder="••••••••" 
+                  className="mt-1.5"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                />
               </div>
-              <Button className="w-full bg-primary text-primary-foreground" onClick={() => setLoggedIn(true)}>
+              <Button className="w-full bg-primary text-primary-foreground" onClick={handleLogin}>
                 <LogIn className="w-4 h-4 mr-2" /> Access Console
               </Button>
+              <p className="text-xs text-muted-foreground text-center mt-4">
+                <strong>Demo:</strong> ADM-001 / admin@123
+              </p>
             </div>
           </div>
         </div>
@@ -167,7 +212,7 @@ const AdminDashboard = () => {
           </button>
         </nav>
 
-        <Button variant="outline" size="sm" className="w-full" onClick={() => setLoggedIn(false)}>Sign Out</Button>
+        <Button variant="outline" size="sm" className="w-full" onClick={() => { setLoggedIn(false); setAdminId(""); setAdminPassword(""); setLoginError(""); clearSession(); }}>Sign Out</Button>
       </aside>
 
       {/* Main Content */}

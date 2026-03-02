@@ -10,6 +10,7 @@ import {
   registerUniversity,
   authenticateUniversity,
 } from "@/lib/universities";
+import { setSession, clearSession, isAnyUserLoggedIn } from "@/lib/auth";
 
 type UniversityRegisterFormProps = { onRegistered: () => void };
 
@@ -103,7 +104,7 @@ const UniversityPortal = () => {
   const [uniPass, setUniPass] = useState('');
   // view controls which sidebar page is shown after login
   const [view, setView] = useState<
-    'dashboard' | 'approved' | 'payments' | 'reports' | 'profile'
+    'dashboard' | 'payments' | 'reports' | 'profile'
   >('dashboard');
   const navigate = useNavigate();
   const location = useLocation();
@@ -184,35 +185,6 @@ const UniversityPortal = () => {
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Patient</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Hospital</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Amount</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {approvedPatients.map((p, idx) => (
-                    <tr key={idx} className="border-b border-border last:border-0">
-                      <td className="px-5 py-3">{p.name}</td>
-                      <td className="px-5 py-3">{p.hospital}</td>
-                      <td className="px-5 py-3 font-semibold">{p.amount}</td>
-                      <td className="px-5 py-3 text-success">{p.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        );
-
-      case 'approved':
-        return (
-          <>
-            <h2 className="text-xl font-semibold mb-4">Approved Patients</h2>
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Name</th>
                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Hospital</th>
                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Amount</th>
                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
@@ -387,6 +359,7 @@ const UniversityPortal = () => {
                       }
                       if (authenticateUniversity(uniId, uniPass)) {
                         setLoggedIn(true);
+                        setSession('university', uniId);
                         navigate('/university/dashboard');
                       } else {
                         alert('ℹ️ Invalid credentials OR your registration is pending admin approval.\n\nIf you just registered, please wait for admin verification before logging in.');
@@ -468,7 +441,7 @@ const UniversityPortal = () => {
       <main className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold">{view === 'dashboard' ? 'Dashboard' : view.charAt(0).toUpperCase() + view.slice(1).replace(/s$/, '')}</h1>
-          <Button variant="outline" size="sm" onClick={() => { setLoggedIn(false); navigate('/university'); }}>Logout</Button>
+          <Button variant="outline" size="sm" onClick={() => { setLoggedIn(false); clearSession(); navigate('/university'); }}>Logout</Button>
         </div>
         {renderContent()}
       </main>
