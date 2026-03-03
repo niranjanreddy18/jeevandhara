@@ -41,6 +41,8 @@ import {
   isAnyUserLoggedIn,
   getSession,
   getLoggedInUserId,
+  useAuthGuard,
+  logout,
 } from "@/lib/auth";
 
 const riskColor = (r: string) => {
@@ -56,6 +58,8 @@ const ADMIN_CREDENTIALS = {
 };
 
 const AdminDashboard = () => {
+  // guard this page so only ADMIN role can access
+  useAuthGuard("ADMIN");
   const [loggedIn, setLoggedIn] = useState(false);
   const [adminId, setAdminId] = useState("");
   const [adminPassword, setAdminPassword] = useState("");

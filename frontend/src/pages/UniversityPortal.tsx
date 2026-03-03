@@ -17,6 +17,8 @@ import {
   isAnyUserLoggedIn,
   getSession,
   getLoggedInUserId,
+  useAuthGuard,
+  logout,
 } from "@/lib/auth";
 
 type UniversityRegisterFormProps = { onRegistered: () => void };
@@ -24,6 +26,7 @@ type UniversityRegisterFormProps = { onRegistered: () => void };
 const UniversityRegisterForm = ({
   onRegistered,
 }: UniversityRegisterFormProps) => {
+  useAuthGuard("UNIVERSITY");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
@@ -179,6 +182,9 @@ const UniversityRegisterForm = ({
 };
 
 const UniversityPortal = () => {
+  // protect the page: only university users may access
+  useAuthGuard("UNIVERSITY");
+
   const [loggedIn, setLoggedIn] = useState(() => {
     try {
       return localStorage.getItem("jh_uni_logged_in") === "true";
@@ -201,6 +207,11 @@ const UniversityPortal = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // if the user logs out via the navbar, clear session
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
   // Persist loggedIn state
   useEffect(() => {
     if (loggedIn) {

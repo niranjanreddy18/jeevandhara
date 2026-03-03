@@ -17,6 +17,7 @@ import {
   Cpu,
   Landmark,
   Award,
+  LogIn,
 } from "lucide-react";
 
 // stats will be computed inside component to use live totals from casesData
@@ -109,6 +110,84 @@ const topContributors = [
     cases: 24,
     logo: null,
     initials: "MAHE",
+  },
+];
+
+const donorFeatures = [
+  {
+    icon: Users,
+    title: "Student Micro-Donations",
+    description:
+      "Tiny contributions from students combine into a life‑saving fund, powering our micro‑donation ecosystem.",
+  },
+  {
+    icon: Shield,
+    title: "Secure Donation System",
+    description:
+      "A simple, encrypted interface ensures student donations are safe and easy.",
+  },
+  {
+    icon: Award,
+    title: "Low Fees & High Impact",
+    description:
+      "Minimal overhead ensures maximum value reaches those in need.",
+  },
+];
+
+const verificationFeatures = [
+  {
+    icon: Brain,
+    title: "Multi-Level Verification",
+    description:
+      "Each case passes through layered AI checks and manual admin review to guarantee authenticity.",
+  },
+  {
+    icon: Cpu,
+    title: "AI Cost Validation",
+    description:
+      "Automated benchmarking and duplicate detection keep expenditures honest.",
+  },
+  {
+    icon: Shield,
+    title: "Government-Grade Security",
+    description:
+      "Built to meet strict regulatory standards for data protection and verification.",
+  },
+  {
+    icon: CheckCircle,
+    title: "Transparent Audit Trail",
+    description:
+      "Every rupee is tracked with public logs so donors see where funds go.",
+  },
+];
+
+const partnerFeatures = [
+  {
+    icon: Hospital,
+    title: "Direct Hospital Integration",
+    description:
+      "Hospitals submit cases directly through a secure portal for seamless processing.",
+  },
+  {
+    icon: GraduationCap,
+    title: "One-Click College Sharing",
+    description:
+      "Share verified cases with partner universities instantly to mobilize funds.",
+  },
+];
+
+const impactFeatures = [
+  {
+    icon: Activity,
+    title: "Priority Case Ranking",
+    description:
+      "Critical patients are automatically moved to the front of the queue for faster support.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Real-Time Tracking",
+    description:
+      "Monitor funding progress, disbursements, and patient outcomes live.",
   },
 ];
 
@@ -233,54 +312,35 @@ const Index = () => {
                 Verified Medical Funding Through AI and Institutional Trust
               </h1>
               <p className="text-base md:text-lg text-primary-foreground/70 mb-6 leading-relaxed">
-                JeevanDhara bridges verified hospitals and universities to fund
-                life-saving treatments for financially vulnerable patients —
-                powered by AI validation and complete transparency.
+                JeevanDhara unites hospitals, students and universities in a
+                student-driven micro‑donation ecosystem where tiny gifts create
+                life‑saving impact. Every case is prioritized and cleared by
+                multi‑level AI + admin verification, with direct hospital
+                integration and one‑click sharing to colleges – all through a
+                simple, secure giving system.
               </p>
               <div className="flex flex-wrap gap-2">
                 {currentSession === null && (
-                  <>
-                    <Button
-                      size="sm"
-                      className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
-                      asChild
-                    >
-                      <Link to="/hospital">
-                        <Building2 className="w-4 h-4 mr-2" />
-                        Hospital Login
-                      </Link>
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
-                      asChild
-                    >
-                      <Link to="/university">
-                        <GraduationCap className="w-4 h-4 mr-2" />
-                        University Login
-                      </Link>
-                    </Button>
-                  </>
+                  <Button
+                    size="sm"
+                    className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
+                    asChild
+                  >
+                    <Link to="/login">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Login
+                    </Link>
+                  </Button>
                 )}
                 {currentSession !== null && (
-                  <>
-                    <Button
-                      size="sm"
-                      disabled
-                      className="bg-muted text-muted-foreground font-semibold cursor-not-allowed"
-                    >
-                      <Building2 className="w-4 h-4 mr-2" />
-                      Hospital Login
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled
-                      className="bg-muted text-muted-foreground font-semibold cursor-not-allowed"
-                    >
-                      <GraduationCap className="w-4 h-4 mr-2" />
-                      University Login
-                    </Button>
-                  </>
+                  <Button
+                    size="sm"
+                    disabled
+                    className="bg-muted text-muted-foreground font-semibold cursor-not-allowed"
+                  >
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Login
+                  </Button>
                 )}
                 <Button
                   size="sm"
@@ -406,43 +466,137 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Trust Indicators */}
+      {/* Platform Features - Organized by Section */}
+
+      {/* For Students & Donors */}
       <section className="py-16 bg-card border-y border-border">
         <div className="container">
-          <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <Brain className="w-8 h-8 text-accent" />
-              <h3 className="text-base font-semibold text-foreground">
-                AI-Powered Validation
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Every case undergoes automated cost benchmarking, duplicate
-                detection, and risk scoring.
-              </p>
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <Activity className="w-8 h-8 text-accent" />
-              <h3 className="text-base font-semibold text-foreground">
-                Real-Time Tracking
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Track funding progress, disbursement status, and case outcomes
-                in real time.
-              </p>
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <Users className="w-8 h-8 text-accent" />
-              <h3 className="text-base font-semibold text-foreground">
-                Institutional Network
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Verified hospitals and universities form a trusted funding
-                ecosystem.
-              </p>
-            </div>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-foreground">
+              For Students & Donors
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto mt-2">
+              Give small, change lives big. Our platform makes donating simple,
+              secure, and impactful.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8 text-center">
+            {donorFeatures.map((feat, i) => (
+              <div
+                key={i}
+                className="flex flex-col items-center gap-3 animate-fade-in"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
+                <feat.icon className="w-8 h-8 text-accent" />
+                <h3 className="text-base font-semibold text-foreground">
+                  {feat.title}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  {feat.description}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* Verification & Trust */}
+      <section className="py-16 bg-background">
+        <div className="container">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-foreground">
+              Verification & Trust
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto mt-2">
+              Every case is verified through multiple layers of AI and human
+              review to ensure authenticity and transparency.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {verificationFeatures.map((feat, i) => (
+              <div
+                key={i}
+                className="flex flex-col items-center gap-3 animate-fade-in"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
+                <feat.icon className="w-8 h-8 text-accent" />
+                <h3 className="text-base font-semibold text-foreground">
+                  {feat.title}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  {feat.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Hospital & University Integration */}
+      <section className="py-16 bg-card border-y border-border">
+        <div className="container">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-foreground">
+              Hospital & University Integration
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto mt-2">
+              Seamless connections between hospitals, universities, and donors
+              for a unified funding ecosystem.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-8 text-center">
+            {partnerFeatures.map((feat, i) => (
+              <div
+                key={i}
+                className="flex flex-col items-center gap-3 animate-fade-in"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
+                <feat.icon className="w-8 h-8 text-accent" />
+                <h3 className="text-base font-semibold text-foreground">
+                  {feat.title}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  {feat.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Real-Time Impact & Tracking */}
+      <section className="py-16 bg-background">
+        <div className="container">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-foreground">
+              Real-Time Impact & Tracking
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto mt-2">
+              See your impact unfold in real time with live progress tracking
+              and prioritized case funding.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-8 text-center">
+            {impactFeatures.map((feat, i) => (
+              <div
+                key={i}
+                className="flex flex-col items-center gap-3 animate-fade-in"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
+                <feat.icon className="w-8 h-8 text-accent" />
+                <h3 className="text-base font-semibold text-foreground">
+                  {feat.title}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  {feat.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
 
       <section className="py-20">
         <div className="container text-center">
@@ -456,37 +610,26 @@ const Index = () => {
           </p>
           <div className="flex justify-center gap-3">
             {currentSession === null && (
-              <>
-                <Button
-                  size="lg"
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
-                  asChild
-                >
-                  <Link to="/hospital">Register Hospital</Link>
-                </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <Link to="/university">Register University</Link>
-                </Button>
-              </>
+              <Button
+                size="lg"
+                className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
+                asChild
+              >
+                <Link to="/login">
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Login
+                </Link>
+              </Button>
             )}
             {currentSession !== null && (
-              <>
-                <Button
-                  size="lg"
-                  disabled
-                  className="bg-muted text-muted-foreground font-semibold cursor-not-allowed"
-                >
-                  Register Hospital
-                </Button>
-                <Button
-                  size="lg"
-                  disabled
-                  variant="outline"
-                  className="cursor-not-allowed"
-                >
-                  Register University
-                </Button>
-              </>
+              <Button
+                size="lg"
+                disabled
+                className="bg-muted text-muted-foreground font-semibold cursor-not-allowed"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Login
+              </Button>
             )}
           </div>
         </div>

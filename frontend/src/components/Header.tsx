@@ -1,8 +1,8 @@
-import { Link, useLocation } from "react-router-dom";
-import { Shield, Menu, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Shield, Menu, X, LogIn, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { getSession } from "@/lib/auth";
+import { getSession, clearSession } from "@/lib/auth";
 
 const navLinks = [
   { to: "/", label: "Home" },
@@ -12,6 +12,7 @@ const navLinks = [
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentSession, setCurrentSession] = useState(getSession());
 
@@ -26,10 +27,15 @@ const Header = () => {
 
   const isLoggedIn = currentSession !== null;
 
+  const handleLogout = () => {
+    clearSession();
+    setCurrentSession(null);
+    setMobileOpen(false);
+    navigate("/");
+  };
+
   const getPanelUrl = () => {
     switch (currentSession?.userType) {
-      case "hospital":
-        return "/hospital";
       case "university":
         return "/university";
       case "admin":
@@ -61,15 +67,40 @@ const Header = () => {
         </Link>
 
         <nav className="hidden md:flex items-center gap-2">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className="px-3 py-2 text-sm font-medium rounded-md bg-accent text-accent-foreground hover:bg-white hover:text-accent transition-colors"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            // Home link is always enabled
+            if (link.to === "/") {
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="px-3 py-2 text-sm font-medium rounded-md bg-accent text-accent-foreground hover:bg-white hover:text-accent transition-colors"
+                >
+                  {link.label}
+                </Link>
+              );
+            }
+
+            // Other links disabled if not logged in
+            return (
+              <div
+                key={link.to}
+                title={!isLoggedIn ? "Login required" : ""}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  isLoggedIn ?
+                    "bg-accent text-accent-foreground hover:bg-white hover:text-accent cursor-pointer"
+                  : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+                }`}
+                onClick={() => {
+                  if (isLoggedIn) {
+                    navigate(link.to);
+                  }
+                }}
+              >
+                {link.label}
+              </div>
+            );
+          })}
           {isLoggedIn && (
             <Button
               size="sm"
@@ -77,7 +108,6 @@ const Header = () => {
               asChild
             >
               <Link to={getPanelUrl()}>
-                {currentSession?.userType === "hospital" && "Hospital Panel"}
                 {currentSession?.userType === "university" &&
                   "University Panel"}
                 {currentSession?.userType === "admin" && "Admin Panel"}
@@ -87,31 +117,27 @@ const Header = () => {
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
-          {!isLoggedIn && (
-            <>
-              <Button
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-white hover:text-accent"
-                asChild
-              >
-                <Link to="/hospital">Hospital</Link>
-              </Button>
-              <Button
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-white hover:text-accent"
-                asChild
-              >
-                <Link to="/university">University</Link>
-              </Button>
-              <Button
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-white hover:text-accent"
-                asChild
-              >
-                <Link to="/admin">Admin</Link>
-              </Button>
-            </>
-          )}
+          {isLoggedIn ?
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:bg-destructive/10 border-destructive/30"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          : <Button
+              size="sm"
+              className="bg-accent text-accent-foreground hover:bg-white hover:text-accent"
+              asChild
+            >
+              <Link to="/login">
+                <LogIn className="w-4 h-4 mr-2" />
+                Login
+              </Link>
+            </Button>
+          }
         </div>
 
         <button
@@ -126,16 +152,42 @@ const Header = () => {
 
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-card p-4 space-y-2">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              onClick={() => setMobileOpen(false)}
-              className="block px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            // Home link always enabled
+            if (link.to === "/") {
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  {link.label}
+                </Link>
+              );
+            }
+
+            // Other links disabled if not logged in
+            return (
+              <div
+                key={link.to}
+                onClick={() => {
+                  if (isLoggedIn) {
+                    navigate(link.to);
+                    setMobileOpen(false);
+                  }
+                }}
+                title={!isLoggedIn ? "Login to access" : ""}
+                className={`block px-3 py-2 text-sm font-medium rounded-md ${
+                  isLoggedIn ?
+                    "text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                  : "text-muted-foreground/40 opacity-40 cursor-not-allowed"
+                }`}
+              >
+                {link.label}
+              </div>
+            );
+          })}
           {isLoggedIn && (
             <Button
               size="sm"
@@ -143,44 +195,33 @@ const Header = () => {
               asChild
             >
               <Link to={getPanelUrl()} onClick={() => setMobileOpen(false)}>
-                {currentSession?.userType === "hospital" && "Hospital Panel"}
                 {currentSession?.userType === "university" &&
                   "University Panel"}
                 {currentSession?.userType === "admin" && "Admin Panel"}
               </Link>
             </Button>
           )}
-          {!isLoggedIn && (
-            <div className="pt-2 flex flex-col gap-2">
-              <Button
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-white hover:text-accent"
-                asChild
-              >
-                <Link to="/hospital" onClick={() => setMobileOpen(false)}>
-                  Hospital
-                </Link>
-              </Button>
-              <Button
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-white hover:text-accent"
-                asChild
-              >
-                <Link to="/university" onClick={() => setMobileOpen(false)}>
-                  University
-                </Link>
-              </Button>
-              <Button
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-white hover:text-accent"
-                asChild
-              >
-                <Link to="/admin" onClick={() => setMobileOpen(false)}>
-                  Admin
-                </Link>
-              </Button>
-            </div>
-          )}
+          {isLoggedIn ?
+            <Button
+              size="sm"
+              className="w-full text-destructive hover:bg-destructive/10 border border-destructive/30"
+              variant="outline"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          : <Button
+              size="sm"
+              className="w-full bg-accent text-accent-foreground hover:bg-white hover:text-accent"
+              asChild
+            >
+              <Link to="/login" onClick={() => setMobileOpen(false)}>
+                <LogIn className="w-4 h-4 mr-2" />
+                Login
+              </Link>
+            </Button>
+          }
         </div>
       )}
     </header>
